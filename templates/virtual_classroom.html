@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Virtual Classroom{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow">
+    <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+      <h2>Virtual Classroom</h2>
+    </div>
+    <div class="card-body">
+      <p>Click below to start a Google Meet or Zoom session.</p>
+      <!-- Virtual Classroom Links -->
+      <div class="mb-3">
+        <a href="https://meet.google.com/new" target="_blank" class="btn btn-success">🎥 Start Google Meet</a>
+        <a href="https://zoom.us/start" target="_blank" class="btn btn-primary">📹 Start Zoom Meeting</a>
+      </div>
+      <!-- Voice Command for Starting Virtual Class -->
+      <h3 class="mt-4">Start via Voice Command</h3>
+      <button id="startVirtualClassBtn" class="btn btn-warning">🎙️ Speak Command</button>
+      <div id="voiceOutput" class="mt-3"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}

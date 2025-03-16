@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Upload Assignment{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow">
+    <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+      <h2 class="mb-0">Upload Assignment</h2>
+    </div>
+    <div class="card-body">
+      <!-- Instructions for Voice Commands -->
+      <div class="alert alert-info">
+          <strong>Voice Command Examples:</strong>
+          <ul>
+              <li>Say: <code>db1 PDF</code> to upload <code>db1.pdf</code></li>
+              <li>Say: <code>assignment1 PDF</code> to upload <code>assignment1.pdf</code></li>
+              <li>For text fields (Title and Description), click the microphone button and speak the text.</li>
+          </ul>
+      </div>
+
+      <!-- Check Available Files Button -->
+      <button type="button" class="btn btn-info mb-3" id="check-files-btn">Check Available Files</button>
+      <div id="available-files" class="alert alert-info" style="display:none;"></div>
+
+      <!-- Assignment Upload Form -->
+      <form id="assignment-form" enctype="multipart/form-data">
+          <div class="form-group">
+              <label for="course_id">Course</label>
+              <select class="form-control" id="course_id" name="course_id" required>
+                  {% for course in courses %}
+                  <option value="{{ course.id }}">{{ course.course_name }}</option>
+                  {% endfor %}
+              </select>
+          </div>
+          <div class="form-group">
+              <label for="title">Assignment Title</label>
+              <div class="input-group">
+                  <input type="text" class="form-control" id="title" name="title" required>
+                  <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-secondary voice-input-btn" data-target="title">🎤</button>
+                  </div>
+              </div>
+          </div>
+          <div class="form-group">
+              <label for="description">Description</label>
+              <div class="input-group">
+                  <textarea class="form-control" id="description" name="description"></textarea>
+                  <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-secondary voice-input-btn" data-target="description">🎤</button>
+                  </div>
+              </div>
+          </div>
+          <div class="form-group">
+              <label for="due_date">Due Date</label>
+              <input type="date" class="form-control" id="due_date" name="due_date">
+          </div>
+          <div class="form-group">
+              <label for="assignment_file">Assignment File</label>
+              <div class="input-group">
+                  <input type="file" class="form-control" id="assignment_file" name="assignment_file">
+                  <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-secondary" id="voice-file-btn">🎤</button>
+                  </div>
+              </div>
+          </div>
+          
+          <!-- Hidden input field to store file name from voice -->
+          <input type="hidden" id="voice_file_name" name="voice_file_name">
+          
+          <!-- Div to display recorded file name -->
+          <div id="recorded-statement" style="margin-top: 10px; font-weight: bold;"></div>
+
+          <button type="submit" class="btn btn-primary">Upload Assignment</button>
+      </form>
+
+      <!-- Success Message -->
+      <div id="assignment-message" class="alert alert-success mt-3" style="display: none;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const assignmentForm = document.getElementById("assignment-form");
+    const recordedStatementDiv = document.getElementById("recorded-statement");
+    const fileInput = document.getElementById("assignment_file");
+
+    // Check Available Files button functionality
+    document.getElementById("check-files-btn").addEventListener("click", function() {
+        fetch("/available-assignments")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const filesList = document.getElementById("available-files");
+                    filesList.innerHTML = "<strong>Available Files:</strong><ul>" + 
+                        data.files.map(file => `<li>${file}</li>`).join("") + 
+                        "</ul>";
+                    filesList.style.display = "block";
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+    });
+
+    // Voice-to-text for Title and Description fields
+    document.querySelectorAll('.voice-input-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const targetFieldId = this.getAttribute('data-target');
+            const targetField = document.getElementById(targetFieldId);
+            if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = "en-US";
+                recognition.interimResults = false;
+                recognition.start();
+                recognition.onresult = function(event) {
+                    let voiceText = event.results[0][0].transcript.trim();
+                    console.log("Voice input for " + targetFieldId + ":", voiceText);
+                    targetField.value = voiceText;
+                };
+                recognition.onerror = function(event) {
+                    console.error("Speech recognition error for " + targetFieldId, event);
+                    alert("Voice recognition error for field input. Please try again.");
+                };
+            } else {
+                alert("Your browser does not support Speech Recognition.");
+            }
+        });
+    });
+
+    // Voice-based file selection
+    const voiceFileBtn = document.getElementById("voice-file-btn");
+
+    if (voiceFileBtn) {
+        voiceFileBtn.addEventListener("click", function () {
+            if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = "en-US";
+                recognition.interimResults = false;
+                recognition.start();
+
+                recognition.onresult = function (event) {
+                    console.log("Speech recognition event:", event);
+
+                    // Extract the recorded transcript
+                    let voiceText = event.results[0][0].transcript.trim();
+                    console.log("Recorded statement before normalization:", voiceText);
+
+                    // Normalize the voice text: replace trailing "PDF" (case insensitive) with ".pdf"
+                    voiceText = voiceText.replace(/\s*PDF$/i, ".pdf");
+                    console.log("Normalized file name:", voiceText);
+                    
+                    // Display the file name on screen
+                    recordedStatementDiv.textContent = "Recorded File Name: " + voiceText;
+                    
+                    // Set the hidden input field with the recognized file name
+                    document.getElementById("voice_file_name").value = voiceText;
+                    
+                    // NEW CODE: Create a visual indication in the file input
+                    // Reset the file input (to clear any previous selection)
+                    fileInput.value = "";
+                    
+                    // Create a custom file list that appears like a real file was selected
+                    const container = document.createElement('div');
+                    container.id = 'custom-file-display';
+                    container.style.marginTop = '5px';
+                    container.style.padding = '5px';
+                    container.style.backgroundColor = '#f0f9ff';
+                    container.style.border = '1px solid #cce5ff';
+                    container.style.borderRadius = '4px';
+                    
+                    container.innerHTML = `
+                        <div style="display: flex; align-items: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px;">
+                                <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+                            </svg>
+                            <span style="color: #0c5460;">Voice selected: <strong>${voiceText}</strong></span>
+                        </div>
+                    `;
+                    
+                    // Remove any existing display
+                    const existingDisplay = document.getElementById('custom-file-display');
+                    if (existingDisplay) {
+                        existingDisplay.remove();
+                    }
+                    
+                    // Add the new display after the file input
+                    fileInput.parentNode.appendChild(container);
+                    
+                    // Add a class to the file input container to indicate voice selection
+                    fileInput.parentNode.classList.add('voice-selected');
+                };
+
+                recognition.onerror = function (event) {
+                    console.error("Speech recognition error:", event);
+                    alert("Voice recognition error. Please try again.");
+                };
+            } else {
+                alert("Your browser does not support Speech Recognition.");
+            }
+        });
+    }
+
+    // Form submission with validation
+    assignmentForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const courseId = document.getElementById("course_id").value;
+        const title = document.getElementById("title").value.trim();
+        const description = document.getElementById("description").value.trim();
+        const dueDate = document.getElementById("due_date").value;
+        const fileInput = document.getElementById("assignment_file");
+        const voiceFileName = document.getElementById("voice_file_name").value.trim();
+
+        if (!courseId || !title) {
+            alert("Please ensure all required fields are filled.");
+            return;
+        }
+
+        // Check if we're using a physical file upload or voice selection
+        if (fileInput.files.length > 0) {
+            // Standard file upload approach
+            const formData = new FormData(assignmentForm);
+            
+            fetch("/upload-assignment", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Assignment uploaded successfully!");
+                    assignmentForm.reset();
+                    recordedStatementDiv.textContent = "";
+                    document.getElementById("available-files").style.display = "none";
+                    // Remove any custom file display
+                    const existingDisplay = document.getElementById('custom-file-display');
+                    if (existingDisplay) {
+                        existingDisplay.remove();
+                    }
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } 
+        else if (voiceFileName !== "") {
+            // Voice-based file selection approach
+            fetch("/voice-upload-assignment", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    course_id: courseId,
+                    title: title,
+                    description: description,
+                    due_date: dueDate,
+                    file_name: voiceFileName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Assignment uploaded successfully using voice selection!");
+                    assignmentForm.reset();
+                    recordedStatementDiv.textContent = "";
+                    document.getElementById("available-files").style.display = "none";
+                    // Remove any custom file display
+                    const existingDisplay = document.getElementById('custom-file-display');
+                    if (existingDisplay) {
+                        existingDisplay.remove();
+                    }
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        } else {
+            alert("Please select a file either by upload or voice.");
+        }
+    });
+});
+</script>
+{% endblock %}

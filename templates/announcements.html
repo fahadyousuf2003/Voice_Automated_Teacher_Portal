@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Announcements{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow">
+    <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+      <h2 class="mb-0">Post Announcement</h2>
+    </div>
+    <div class="card-body">
+      <!-- Announcement Form -->
+      <form id="announcement-form">
+        <div class="form-group">
+          <label for="course_id">Course</label>
+          <select class="form-control" id="course_id" name="course_id" required>
+            {% for course in courses %}
+              <option value="{{ course.id }}">{{ course.course_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="message">Message</label>
+          <div class="input-group">
+            <textarea class="form-control" id="message" name="message" rows="3" required></textarea>
+            <div class="input-group-append">
+              <button type="button" class="btn btn-outline-secondary voice-input-btn" data-target="message">🎤</button>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Post Announcement</button>
+      </form>
+
+      <!-- Announcements List -->
+      <h3 class="mt-4">Recent Announcements</h3>
+      <ul id="announcement-list" class="list-group mt-3">
+        {% for announcement in announcements %}
+          <li class="list-group-item">
+            <strong>{{ announcement.course.course_name }}:</strong> {{ announcement.message }}
+            <span class="text-muted float-right">{{ announcement.created_date.strftime('%Y-%m-%d %H:%M') }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Helper function to convert string to Title Case.
+    function toTitleCase(str) {
+        return str.toLowerCase().split(" ").map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(" ");
+    }
+
+    // Attach voice-to-text functionality for the message field.
+    const voiceButtons = document.querySelectorAll('.voice-input-btn');
+    voiceButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const targetField = document.getElementById(targetId);
+            if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = "en-US";
+                recognition.interimResults = false;
+                recognition.start();
+                recognition.onresult = function(event) {
+                    let transcript = event.results[0][0].transcript.trim();
+                    console.log("Voice input for " + targetId + ":", transcript);
+                    // Convert to Title Case: capitalizing each main word.
+                    transcript = toTitleCase(transcript);
+                    targetField.value = transcript;
+                };
+                recognition.onerror = function(event) {
+                    console.error("Speech recognition error for " + targetId + ":", event);
+                    alert("Voice recognition error. Please try again.");
+                };
+            } else {
+                alert("Your browser does not support Speech Recognition.");
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Lecture Capture{% endblock %}
+{% block content %}
+<div class="card shadow">
+  <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+    <h2>Lecture Capture</h2>
+  </div>
+  <div class="card-body">
+    <p>Start and stop lecture recording. Transcripts will be generated automatically.</p>
+    <!-- Recording Buttons -->
+    <div class="mb-3">
+      <button id="startRecord" class="btn btn-primary">🎤 Start Recording</button>
+      <button id="stopRecord" class="btn btn-danger" disabled>🛑 Stop Recording</button>
+    </div>
+    <!-- Transcription Display -->
+    <div id="transcript" class="mb-3" style="background-color: #fff; padding: 10px; border: 1px solid #ccc;"></div>
+    <!-- AI Summarization -->
+    <h3>AI Lecture Summary</h3>
+    <button id="summarizeBtn" class="btn btn-info" disabled>📝 Summarize Lecture</button>
+    <div id="summaryOutput" class="mt-3"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+// Lecture Capture using Web Speech API
+const startRecordBtn = document.getElementById("startRecord");
+const stopRecordBtn = document.getElementById("stopRecord");
+const transcriptDiv = document.getElementById("transcript");
+
+if (startRecordBtn && stopRecordBtn && transcriptDiv) {
+    let recognition;
+    let finalTranscript = "";
+
+    // Check for browser support
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+    } else {
+        console.error("Web Speech API is not supported in this browser.");
+        startRecordBtn.disabled = true;
+        stopRecordBtn.disabled = true;
+    }
+
+    // Start recording using Web Speech API
+    startRecordBtn.addEventListener("click", function () {
+        if (recognition) {
+            finalTranscript = "";
+            transcriptDiv.innerText = "";
+            recognition.start();
+            startRecordBtn.disabled = true;
+            stopRecordBtn.disabled = false;
+        }
+    });
+
+    // Stop recording and update transcript
+    stopRecordBtn.addEventListener("click", function () {
+        if (recognition) {
+            recognition.stop();
+            startRecordBtn.disabled = false;
+            stopRecordBtn.disabled = true;
+        }
+    });
+
+    // Process results from the SpeechRecognition
+    recognition.onresult = function (event) {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript;
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        transcriptDiv.innerText = finalTranscript + interimTranscript;
+
+        // Enable summarize button once we have a final transcript
+        if (finalTranscript.trim() !== "") {
+            document.getElementById("summarizeBtn").disabled = false;
+        }
+    };
+
+    recognition.onerror = function (event) {
+        console.error("Speech recognition error:", event.error);
+    };
+}
+</script>
+{% endblock %}

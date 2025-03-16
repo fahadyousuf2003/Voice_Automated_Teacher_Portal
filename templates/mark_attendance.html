@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Mark Attendance{% endblock %}
+{% block content %}
+<div class="card shadow mt-4">
+  <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+    <h2>Mark Attendance</h2>
+  </div>
+  <div class="card-body">
+    <!-- Voice Command Button -->
+    <div class="mb-4">
+      <button id="voiceAttendanceBtn" class="btn btn-info">
+        <i class="fas fa-microphone"></i> Mark Attendance by Voice
+      </button>
+      <div id="voiceStatus" class="mt-2 text-muted"></div>
+    </div>
+    <!-- Attendance Form -->
+    <form id="attendance-form">
+      <div class="form-group">
+        <label for="course_id">Course</label>
+        <select class="form-control" id="course_id" name="course_id" required>
+          {% for course in courses %}
+            <option value="{{ course.id }}">{{ course.course_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" class="form-control" id="date" name="date" required>
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select class="form-control" id="status" name="status" required>
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+          <option value="Late">Late</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Mark Attendance</button>
+    </form>
+    <!-- Success Message -->
+    <div id="attendance-message" class="alert alert-success mt-3" style="display: none;"></div>
+    <!-- Voice Command Instructions -->
+    <div class="card mt-4">
+      <div class="card-header">Voice Command Help</div>
+      <div class="card-body">
+        <p>Try these voice commands:</p>
+        <ul>
+          <li>"Mark attendance for Database Systems as present today"</li>
+          <li>"Record attendance as absent for Computer Networks for today"</li>
+          <li>"Mark late attendance for Artificial Intelligence for today"</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Speech Recognition. Please use a supported browser like Chrome.");
+            return;
+        }
+    
+        const recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+    
+        const voiceAttendanceBtn = document.getElementById("voiceAttendanceBtn");
+        const voiceStatus = document.getElementById("voiceStatus");
+        const courseSelect = document.getElementById("course_id");
+        const dateInput = document.getElementById("date");
+        const statusSelect = document.getElementById("status");
+        const attendanceForm = document.getElementById("attendance-form");
+    
+        voiceAttendanceBtn.addEventListener("click", function() {
+            voiceStatus.textContent = "Listening... Please speak now";
+            recognition.start();
+        });
+    
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            voiceStatus.textContent = `Command recognized: "${transcript}"`;
+            processAttendanceCommand(transcript);
+        };
+    
+        recognition.onerror = function(event) {
+            voiceStatus.textContent = "Error during speech recognition: " + event.error;
+        };
+    
+        function processAttendanceCommand(command) {
+            // Set today's date if not provided
+            if (!dateInput.value) {
+                const today = new Date();
+                dateInput.value = today.toISOString().split("T")[0];
+            }
+            
+            const commandLower = command.toLowerCase();
+    
+            // Extract attendance status
+            if (commandLower.includes("present")) {
+                statusSelect.value = "Present";
+            } else if (commandLower.includes("absent")) {
+                statusSelect.value = "Absent";
+            } else if (commandLower.includes("late")) {
+                statusSelect.value = "Late";
+            }
+    
+            // Match course name from command with available options
+            const courseOptions = Array.from(courseSelect.options);
+            for (const option of courseOptions) {
+                if (commandLower.includes(option.text.toLowerCase())) {
+                    courseSelect.value = option.value;
+                    break;
+                }
+            }
+    
+            voiceStatus.textContent += "\nForm updated with: " +
+                (statusSelect.value ? "Status: " + statusSelect.value + " " : "") +
+                (courseSelect.value ? "Course: " + courseSelect.selectedOptions[0].text : "");
+    
+            // Now submit the form data via AJAX using fetch
+            const formData = new FormData(attendanceForm);
+            fetch("/mark-attendance", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    voiceStatus.textContent += "\nAttendance submitted successfully!";
+                } else {
+                    voiceStatus.textContent += "\nSubmission error: " + data.error;
+                }
+            })
+            .catch(error => {
+                voiceStatus.textContent += "\nError submitting attendance: " + error;
+            });
+        }
+    });
+</script>
+    
+{% endblock %}

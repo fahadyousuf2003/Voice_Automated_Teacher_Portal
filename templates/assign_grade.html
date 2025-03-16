@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Assign Grade{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow">
+    <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+      <h2 class="mb-0">Assign Grade</h2>
+    </div>
+    <div class="card-body">
+      <!-- Grade Assignment Form -->
+      <form id="grade-form">
+        <div class="form-group">
+          <label for="submission_id">Select Submission</label>
+          <select class="form-control" id="submission_id" name="submission_id" required>
+            {% for submission in submissions %}
+              <option value="{{ submission.id }}">
+                {{ submission.assignment.title }} - Student: {{ submission.student_id }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="grade">Grade</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="grade" name="grade" required>
+            <div class="input-group-append">
+              <button type="button" class="btn btn-outline-secondary voice-input-btn" data-target="grade">🎤</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="feedback">Feedback</label>
+          <div class="input-group">
+            <textarea class="form-control" id="feedback" name="feedback" rows="3"></textarea>
+            <div class="input-group-append">
+              <button type="button" class="btn btn-outline-secondary voice-input-btn" data-target="feedback">🎤</button>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Assign Grade</button>
+      </form>
+
+      <!-- Success Message -->
+      <div id="grade-message" class="alert alert-success mt-3" style="display: none;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Function to convert a string to title case
+    function toTitleCase(str) {
+        return str.toLowerCase().split(" ").map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(" ");
+    }
+
+    // Attach voice input functionality for Grade and Feedback fields
+    const voiceButtons = document.querySelectorAll('.voice-input-btn');
+    voiceButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const targetField = document.getElementById(targetId);
+            if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = "en-US";
+                recognition.interimResults = false;
+                recognition.start();
+
+                recognition.onresult = function(event) {
+                    let transcript = event.results[0][0].transcript.trim();
+                    console.log("Voice input for " + targetId + ":", transcript);
+                    
+                    // Custom transformation for grade field:
+                    if(targetId === "grade") {
+                        // Replace " plus" with "+" and " minus" with "-"
+                        transcript = transcript.replace(/\s*plus\s*/gi, "+")
+                                               .replace(/\s*minus\s*/gi, "-");
+                        transcript = transcript.toUpperCase();
+                    }
+
+                    // For feedback field, convert to title case
+                    if(targetId === "feedback") {
+                        transcript = toTitleCase(transcript);
+                    }
+
+                    targetField.value = transcript;
+                };
+
+                recognition.onerror = function(event) {
+                    console.error("Speech recognition error for " + targetId + ":", event);
+                    alert("Voice recognition error. Please try again.");
+                };
+            } else {
+                alert("Your browser does not support Speech Recognition.");
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

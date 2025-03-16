@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="card shadow mb-4">
+  <div class="card-header" style="background-color: #2c3e50; color: #fff;">
+    <h1>Welcome, {{ teacher.name }}!</h1>
+  </div>
+  <div class="card-body">
+    <p>Manage your tasks using voice commands:</p>
+    <!-- Quick Access Menu -->
+    <div class="list-group">
+      <a href="{{ url_for('mark_attendance') }}" class="list-group-item list-group-item-action">📌 Mark Attendance</a>
+      <a href="{{ url_for('upload_assignment') }}" class="list-group-item list-group-item-action">📂 Upload Assignment</a>
+      <a href="{{ url_for('assign_grade') }}" class="list-group-item list-group-item-action">📝 Assign Grades</a>
+      <a href="{{ url_for('announcements') }}" class="list-group-item list-group-item-action">📢 Announcements</a>
+      <a href="{{ url_for('schedule') }}" class="list-group-item list-group-item-action">📅 Schedule Class</a>
+      <a href="{{ url_for('lecture_capture') }}" class="list-group-item list-group-item-action">🎙️ Lecture Capture</a>
+      <a href="{{ url_for('virtual_classroom') }}" class="list-group-item list-group-item-action">🎥 Virtual Classroom</a>
+      <a href="{{ url_for('chatbot') }}" class="list-group-item list-group-item-action">🤖 AI Chatbot</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}
